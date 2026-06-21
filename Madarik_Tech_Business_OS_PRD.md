@@ -1,3 +1,7 @@
+<img width="811" height="229" alt="Artboard 6 copy" src="https://github.com/user-attachments/assets/99673889-a785-4626-928d-109903083ad4" />
+
+
+
 # Madarik Tech Business OS
 ## Product Requirements Document (PRD)
 ### Version 1.1 — June 2026 (Updated: 10 Additional Modules)
