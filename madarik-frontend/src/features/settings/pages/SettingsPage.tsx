@@ -34,10 +34,69 @@ export default function SettingsPage() {
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings'] })
-      alert('تم حفظ الإعدادات بنجاح')
+        queryClient.invalidateQueries({ queryKey: ['settings'] })
+        alert('تم حفظ الإعدادات بنجاح')
     }
-  })
+  });
+
+  // Mutation to update DB credentials
+  const envMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const token = localStorage.getItem('madarik_token');
+      const response = await fetch('http://localhost:8000/api/v1/admin/env', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: formData
+      });
+      if (!response.ok) throw new Error('Failed to update DB credentials');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      alert('تم تحديث بيانات الدخول لقاعدة البيانات');
+    }
+  });
+
+  // Mutation to reset database
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('madarik_token');
+      const response = await fetch('http://localhost:8000/api/v1/admin/database-reset', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to reset database');
+      return response.json();
+    },
+    onSuccess: () => {
+      alert('تم تصفير البيانات بنجاح');
+    }
+  });
+
+  // Mutation to seed demo data
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('madarik_token');
+      const response = await fetch('http://localhost:8000/api/v1/admin/database-seed', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to seed database');
+      return response.json();
+    },
+    onSuccess: () => {
+      alert('تم حقن البيانات التجريبية بنجاح!');
+    }
+  });
 
   const settings = data ?? {}
 
@@ -66,7 +125,7 @@ export default function SettingsPage() {
 
   if (isLoading) return <div className="p-8">جاري التحميل...</div>
 
-  return (
+  return ( <>
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6 max-w-4xl pb-10">
       <div>
         <h2 className="text-xl font-bold text-[hsl(var(--foreground))]">الإعدادات</h2>
@@ -149,5 +208,51 @@ export default function SettingsPage() {
         </button>
       </div>
     </form>
-  )
+          {/* Database Administration Section */}
+          <div className="glass-card p-6 mt-8">
+            <h3 className="font-semibold text-[hsl(var(--foreground))] mb-4">إدارة قاعدة البيانات</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">اسم مستخدم قاعدة البيانات</label>
+                <input name="DB_USERNAME" defaultValue={settings.DB_USERNAME} className="form-input" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">كلمة مرور قاعدة البيانات</label>
+                <input name="DB_PASSWORD" type="password" defaultValue={settings.DB_PASSWORD} className="form-input" />
+              </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <button type="button"
+                onClick={() => {
+                  const form = new FormData();
+                  const usernameInput = document.querySelector('input[name="DB_USERNAME"]') as HTMLInputElement;
+                  const passwordInput = document.querySelector('input[name="DB_PASSWORD"]') as HTMLInputElement;
+                  if (usernameInput && passwordInput) {
+                    form.append('DB_USERNAME', usernameInput.value);
+                    form.append('DB_PASSWORD', passwordInput.value);
+                    envMutation.mutate(form);
+                  }
+                }}
+                className="btn-secondary shadow-lg shadow-emerald-500/20 px-6 py-2.5 text-base mr-2"
+                disabled={envMutation.isPending}
+              >
+                {envMutation.isPending ? 'جاري التحديث...' : 'تحديث بيانات الدخول'}
+              </button>
+              <button type="button"
+                onClick={() => seedMutation.mutate()}
+                className="btn-primary shadow-lg shadow-emerald-500/20 px-6 py-2.5 text-base mr-2"
+                disabled={seedMutation.isPending}
+              >
+                {seedMutation.isPending ? 'جاري الحقن...' : 'حقن بيانات تجريبية (Demo)'}
+              </button>
+              <button type="button"
+                onClick={() => resetMutation.mutate()}
+                className="btn-danger shadow-lg shadow-red-500/20 px-6 py-2.5 text-base"
+                disabled={resetMutation.isPending}
+              >
+                {resetMutation.isPending ? 'جاري التصفير...' : 'تصفير قاعدة البيانات'}
+              </button>
+            </div>
+          </div>
+  </> )
 }

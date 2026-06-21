@@ -25,6 +25,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('madarik_token')
       localStorage.removeItem('madarik_user')
+      localStorage.removeItem('madarik-auth')
       window.location.href = '/login'
     }
     return Promise.reject(error)

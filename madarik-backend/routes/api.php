@@ -32,6 +32,8 @@ use App\Http\Controllers\Api\V1\Analytics\CashFlowController;
 use App\Http\Controllers\Api\V1\Pdf\PdfController;
 use App\Http\Controllers\Api\V1\Files\FileController;
 use App\Http\Controllers\Api\V1\Notifications\NotificationController;
+use App\Http\Controllers\Api\V1\DatabaseResetController;
+use App\Http\Controllers\Api\V1\EnvController;
 use App\Http\Controllers\Api\V1\Settings\SettingsController;
 use App\Http\Controllers\Api\V1\Ai\AiAssistantController;
 use App\Http\Controllers\Api\V1\Crm\MarketingSpendController;
@@ -203,4 +205,11 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::post('ai/query', [AiAssistantController::class, 'query']);
     Route::get('ai/conversations', [AiAssistantController::class, 'conversations']);
     Route::get('ai/conversations/{id}', [AiAssistantController::class, 'conversation']);
+
+    // Admin
+    Route::prefix('admin')->group(function () {
+        Route::post('database-reset', [DatabaseResetController::class, 'reset']);
+        Route::post('database-seed', [DatabaseResetController::class, 'seedDummy']);
+        Route::post('env', [EnvController::class, 'update']);
+    });
 });
