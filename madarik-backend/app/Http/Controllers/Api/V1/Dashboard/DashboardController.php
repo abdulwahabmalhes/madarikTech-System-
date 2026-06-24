@@ -23,14 +23,14 @@ class DashboardController extends Controller
         $endOfMonth = $now->copy()->endOfMonth();
         $startOfYear = $now->copy()->startOfYear();
 
-        // Revenue KPIs
-        $totalRevenueMtd = Payment::where('tenant_id', $tenantId)
-            ->whereBetween('payment_date', [$startOfMonth, $endOfMonth])
-            ->sum('amount');
+        // Revenue KPIs (Using Invoices instead of Payments to show total billed revenue)
+        $totalRevenueMtd = Invoice::where('tenant_id', $tenantId)
+            ->whereBetween('issue_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+            ->sum('total');
 
-        $totalRevenueYtd = Payment::where('tenant_id', $tenantId)
-            ->whereBetween('payment_date', [$startOfYear, $now])
-            ->sum('amount');
+        $totalRevenueYtd = Invoice::where('tenant_id', $tenantId)
+            ->whereBetween('issue_date', [$startOfYear->toDateString(), $now->toDateString()])
+            ->sum('total');
 
         $totalOutstanding = Invoice::where('tenant_id', $tenantId)
             ->whereIn('status', ['sent', 'overdue', 'partial'])
@@ -40,9 +40,9 @@ class DashboardController extends Controller
             ->where('status', 'overdue')
             ->sum('remaining_amount');
 
-        // Projects
+        // Projects (Include planning, in-progress, and on-hold)
         $activeProjects = Project::where('tenant_id', $tenantId)
-            ->where('status', 'in-progress')
+            ->whereIn('status', ['planning', 'in-progress', 'on-hold'])
             ->count();
 
         $overdueProjects = Project::where('tenant_id', $tenantId)
@@ -67,9 +67,8 @@ class DashboardController extends Controller
             ->whereNotIn('stage', ['won', 'lost'])
             ->sum('estimated_value');
 
-        // Tasks
+        // Tasks (All pending tasks, not just today's)
         $tasksDueToday = Task::where('tenant_id', $tenantId)
-            ->where('due_date', $now->toDateString())
             ->where('status', '!=', 'completed')
             ->count();
 
@@ -173,12 +172,12 @@ class DashboardController extends Controller
         $endOfMonth = $now->copy()->endOfMonth();
 
         return response()->json([
-            'revenue_mtd' => Payment::where('tenant_id', $tenantId)
-                ->whereBetween('payment_date', [$startOfMonth, $endOfMonth])
-                ->sum('amount'),
+            'revenue_mtd' => Invoice::where('tenant_id', $tenantId)
+                ->whereBetween('issue_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+                ->sum('total'),
             'outstanding' => Invoice::where('tenant_id', $tenantId)
                 ->whereIn('status', ['sent', 'overdue'])->sum('remaining_amount'),
-            'active_projects' => Project::where('tenant_id', $tenantId)->where('status', 'in-progress')->count(),
+            'active_projects' => Project::where('tenant_id', $tenantId)->whereIn('status', ['planning', 'in-progress', 'on-hold'])->count(),
             'leads_pipeline'  => Lead::where('tenant_id', $tenantId)->whereNotIn('stage', ['won', 'lost'])->count(),
         ]);
     }

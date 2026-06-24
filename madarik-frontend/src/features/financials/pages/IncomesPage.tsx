@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import api from '@/lib/api'
-import { TrendingUp, Plus, Search, Tag } from 'lucide-react'
+import { TrendingUp, Plus, Search, Tag, Edit, Trash2 } from 'lucide-react'
 
 const CATEGORIES = [
   'مبيعات عامة', 'استثمار', 'تمويل', 'عمولة', 'إيرادات أخرى'
@@ -11,6 +11,7 @@ export default function IncomesPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ title: '', amount: '', category: 'مبيعات عامة', date: new Date().toISOString().split('T')[0], notes: '', project_id: '' })
 
   const { data: projectsData } = useQuery({
@@ -33,10 +34,43 @@ export default function IncomesPage() {
     mutationFn: (data: any) => api.post('/incomes', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incomes'] })
-      setShowAdd(false)
-      setForm({ title: '', amount: '', category: 'مبيعات عامة', date: new Date().toISOString().split('T')[0], notes: '', project_id: '' })
+      resetForm()
     },
   })
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => api.put(`/incomes/${editId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incomes'] })
+      resetForm()
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/incomes/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incomes'] })
+    },
+  })
+
+  const resetForm = () => {
+    setShowAdd(false)
+    setEditId(null)
+    setForm({ title: '', amount: '', category: 'مبيعات عامة', date: new Date().toISOString().split('T')[0], notes: '', project_id: '' })
+  }
+
+  const startEdit = (e: any) => {
+    setEditId(e.id)
+    setForm({
+      title: e.title,
+      amount: e.amount,
+      category: e.category || 'مبيعات عامة',
+      date: e.date ? new Date(e.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      notes: e.notes || '',
+      project_id: e.project_id || ''
+    })
+    setShowAdd(true)
+  }
 
   const manualIncomes = data?.data ?? []
   
@@ -86,7 +120,13 @@ export default function IncomesPage() {
             هذا الشهر: <strong className="text-emerald-500">{totalThisMonth.toLocaleString('ar-AE')} د.إ</strong>
           </p>
         </div>
-        <button className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAdd(!showAdd)}>
+        <button className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => {
+          if (showAdd) {
+            resetForm()
+          } else {
+            setShowAdd(true)
+          }
+        }}>
           <Plus size={16} /> إضافة إيراد
         </button>
       </div>
@@ -94,7 +134,7 @@ export default function IncomesPage() {
       {/* Quick Add Form */}
       {showAdd && (
         <div className="glass-card p-5 border-s-4 border-emerald-400">
-          <h3 className="font-semibold mb-4 text-[hsl(var(--foreground))] text-emerald-600">إضافة إيراد جديد</h3>
+          <h3 className="font-semibold mb-4 text-[hsl(var(--foreground))] text-emerald-600">{editId ? 'تعديل الإيراد' : 'إضافة إيراد جديد'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <input placeholder="العنوان (مثال: أرباح استثمار)" value={form.title}
               onChange={e => setForm({...form, title: e.target.value})} className="form-input" />
@@ -114,13 +154,17 @@ export default function IncomesPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => addMutation.mutate({ ...form, project_id: form.project_id || null })}
-              disabled={!form.title || !form.amount || addMutation.isPending}
+              onClick={() => {
+                const payload = { ...form, project_id: form.project_id || null }
+                if (editId) updateMutation.mutate(payload)
+                else addMutation.mutate(payload)
+              }}
+              disabled={!form.title || !form.amount || addMutation.isPending || updateMutation.isPending}
               className="btn-primary bg-emerald-600 hover:bg-emerald-700"
             >
-              {addMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ الإيراد'}
+              {addMutation.isPending || updateMutation.isPending ? 'جارٍ الحفظ...' : (editId ? 'تعديل الإيراد' : 'حفظ الإيراد')}
             </button>
-            <button onClick={() => setShowAdd(false)} className="btn-secondary">إلغاء</button>
+            <button onClick={resetForm} className="btn-secondary">إلغاء</button>
           </div>
         </div>
       )}
@@ -161,6 +205,7 @@ export default function IncomesPage() {
                 <th className="text-start">التاريخ</th>
                 <th className="text-start">المبلغ</th>
                 <th className="text-start">ملاحظات</th>
+                <th className="text-end">إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -181,6 +226,22 @@ export default function IncomesPage() {
                     {Number(e.amount).toLocaleString('ar-AE')} <span className="text-xs font-normal text-[hsl(var(--muted))]">د.إ</span>
                   </td>
                   <td className="text-xs text-[hsl(var(--muted))] max-w-48 truncate">{e.notes ?? '—'}</td>
+                  <td className="text-end">
+                    {e.isAutoGenerated ? (
+                      <span className="text-[10px] text-[hsl(var(--muted))] bg-gray-100 px-2 py-1 rounded dark:bg-gray-800">
+                        مرتبط بفاتورة
+                      </span>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => startEdit(e)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 hover:bg-blue-100 rounded" title="تعديل"><Edit size={14} /></button>
+                        <button onClick={() => {
+                          if (confirm('هل أنت متأكد من حذف هذا الإيراد؟')) {
+                            deleteMutation.mutate(e.id)
+                          }
+                        }} disabled={deleteMutation.isPending} className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded" title="حذف"><Trash2 size={14} /></button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

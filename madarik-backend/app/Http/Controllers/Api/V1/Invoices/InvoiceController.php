@@ -31,6 +31,7 @@ class InvoiceController extends Controller
         if (!empty($data['items']) && is_array($data['items'])) {
             foreach ($data['items'] as $item) {
                 $invoice->items()->create([
+                    'product_id' => $item['product_id'] ?? null,
                     'description' => $item['description'] ?? '',
                     'quantity' => $item['quantity'] ?? 1,
                     'unit_price' => $item['unit_price'] ?? 0,
@@ -62,6 +63,7 @@ class InvoiceController extends Controller
                 $inv->items()->delete();
                 foreach ($request->items as $item) {
                     $inv->items()->create([
+                        'product_id' => $item['product_id'] ?? null,
                         'description' => $item['description'] ?? '',
                         'quantity' => $item['quantity'] ?? 1,
                         'unit_price' => $item['unit_price'] ?? 0,

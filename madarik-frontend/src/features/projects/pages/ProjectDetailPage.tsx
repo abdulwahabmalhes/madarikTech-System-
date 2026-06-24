@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { Modal } from '@/components/ui/Modal'
 import { 
   FolderKanban, Calendar, AlertTriangle, CheckCircle2, 
-  ChevronRight, Users, Clock, AlignLeft, BarChart, FileText, FileSignature, Receipt, Link as LinkIcon
+  ChevronRight, Users, Clock, AlignLeft, BarChart, FileText, FileSignature, Receipt, Link as LinkIcon, Video
 } from 'lucide-react'
 
 const STATUS_MAP: Record<string, { label: string; badge: string }> = {
@@ -99,6 +99,7 @@ export default function ProjectDetailPage() {
   const contracts = project.contracts ?? []
   const invoices = project.invoices ?? []
   const expenses = project.expenses ?? []
+  const meetings = project.meetings ?? []
   
   const completedTasks = tasks.filter((t: any) => t.status === 'completed').length
   const totalTasks = tasks.length
@@ -213,8 +214,8 @@ export default function ProjectDetailPage() {
               <div className="text-2xl font-bold text-emerald-600">{totalTasks - completedTasks}</div>
             </div>
             <div className="glass-card p-4">
-              <div className="text-xs text-[hsl(var(--muted))] mb-1">عدد المراحل</div>
-              <div className="text-2xl font-bold text-purple-600">{project.milestones?.length || 0}</div>
+              <div className="text-xs text-[hsl(var(--muted))] mb-1">الاجتماعات</div>
+              <div className="text-2xl font-bold text-blue-600">{meetings.length}</div>
             </div>
           </div>
 
@@ -223,6 +224,7 @@ export default function ProjectDetailPage() {
             {[
               { id: 'overview', label: 'نظرة عامة', icon: AlignLeft },
               { id: 'tasks', label: 'المهام', icon: CheckCircle2 },
+              { id: 'meetings', label: 'الاجتماعات', icon: Video },
               { id: 'quotations', label: 'عروض الأسعار', icon: FileText },
               { id: 'contracts', label: 'العقود', icon: FileSignature },
               { id: 'invoices', label: 'الفواتير', icon: Receipt },
@@ -317,6 +319,49 @@ export default function ProjectDetailPage() {
                 ) : (
                   <div className="text-center py-8 text-[hsl(var(--muted))] border border-dashed border-[hsl(var(--border))] rounded-xl">
                     لا توجد مهام مسجلة لهذا المشروع
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'meetings' && (
+              <div className="glass-card p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Video size={18} className="text-blue-500" /> الاجتماعات
+                  </h3>
+                  <Link to={`/meetings`} className="text-xs btn-primary py-1.5 px-3">
+                    إدارة الاجتماعات
+                  </Link>
+                </div>
+                {meetings.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[hsl(var(--border))] text-[hsl(var(--muted))] text-right">
+                          <th className="pb-3 font-medium">موضوع الاجتماع</th>
+                          <th className="pb-3 font-medium">النوع</th>
+                          <th className="pb-3 font-medium">التاريخ والوقت</th>
+                          <th className="pb-3 font-medium">الحالة</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {meetings.map((m: any) => (
+                          <tr key={m.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--surface-hover))]">
+                            <td className="py-3 font-medium">{m.title}</td>
+                            <td className="py-3 text-[hsl(var(--muted))]">{m.type === 'online' ? 'أونلاين' : m.type === 'in_person' ? 'حضوري' : 'هاتفي'}</td>
+                            <td className="py-3 text-[hsl(var(--muted))]">{m.date ? new Date(m.date).toLocaleDateString('ar-AE') : '-'} {m.start_time ? ` - ${m.start_time}` : ''}</td>
+                            <td className="py-3">
+                              <span className="text-xs badge-gray">{m.status === 'scheduled' ? 'مجدول' : m.status === 'done' ? 'تم الانتهاء' : m.status === 'cancelled' ? 'ملغي' : 'مؤجل'}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-[hsl(var(--muted))] border border-dashed border-[hsl(var(--border))] rounded-xl">
+                    لا توجد اجتماعات مرتبطة بهذا المشروع
                   </div>
                 )}
               </div>

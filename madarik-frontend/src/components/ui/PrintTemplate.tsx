@@ -12,11 +12,10 @@ export function PrintTemplate({ children, title }: PrintTemplateProps) {
     queryFn: () => api.get('/settings').then(r => r.data),
   })
 
-  const getImageUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http')) return path;
-    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    return 'http://localhost:8000/' + (cleanPath.startsWith('storage') ? '' : 'storage/') + cleanPath;
+  const getImageUrl = (path: string | undefined) => {
+    if (!path) return ''
+    if (path.startsWith('http')) return path
+    return path.startsWith('/') ? path : '/' + path
   };
 
   return (

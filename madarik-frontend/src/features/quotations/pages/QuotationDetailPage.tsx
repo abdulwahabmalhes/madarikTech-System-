@@ -46,9 +46,7 @@ export default function QuotationDetailPage() {
     const finalPath = path || s.logo_path || s.logo
     if (!finalPath) return ''
     if (finalPath.startsWith('http')) return finalPath
-    const cleanPath = finalPath.startsWith('/') ? finalPath.substring(1) : finalPath;
-    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000'
-    return `${baseUrl}/${cleanPath.startsWith('storage') ? cleanPath : 'storage/' + cleanPath}`
+    return finalPath.startsWith('/') ? finalPath : '/' + finalPath
   }
 
   const status = STATUS_MAP[quotation.status] ?? { label: quotation.status, badge: 'bg-gray-100' }
@@ -511,9 +509,7 @@ function PageHeader({ s }: { s: any }) {
     const finalPath = path || s.logo_path || s.logo
     if (!finalPath) return ''
     if (finalPath.startsWith('http')) return finalPath
-    const cleanPath = finalPath.startsWith('/') ? finalPath.substring(1) : finalPath;
-    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000'
-    return `${baseUrl}/${cleanPath.startsWith('storage') ? cleanPath : 'storage/' + cleanPath}`
+    return finalPath.startsWith('/') ? finalPath : '/' + finalPath
   }
   
   return (

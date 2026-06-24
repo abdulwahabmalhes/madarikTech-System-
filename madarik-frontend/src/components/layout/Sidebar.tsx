@@ -9,7 +9,7 @@ import {
   Package, CalendarDays, Headphones, BookOpen, RefreshCw,
   Target, HardDrive, BarChart3, DollarSign, Settings,
   ChevronLeft, ChevronRight, LogOut, Bell, Bot, Handshake,
-  Calendar, ClockIcon
+  Calendar, ClockIcon, Shield
 } from 'lucide-react'
 
 const navItems = [
@@ -40,6 +40,7 @@ const navItems = [
   { label: 'قاعدة المعرفة', labelEn: 'Knowledge', icon: BookOpen, path: '/knowledge', permission: 'knowledge.view' },
   { label: 'التقويم', labelEn: 'Calendar', icon: CalendarDays, path: '/calendar', permission: 'calendar.view' },
   { label: 'الفريق', labelEn: 'Team', icon: Users, path: '/team', permission: 'team.view' },
+  { label: 'الأدوار والصلاحيات', labelEn: 'Roles', icon: Shield, path: '/team/roles', permission: 'settings.view' },
   { label: 'الإشعارات', labelEn: 'Notifications', icon: Bell, path: '/notifications', permission: 'notifications.view' },
   { label: 'الإعدادات', labelEn: 'Settings', icon: Settings, path: '/settings', permission: 'settings.view' },
 ]
@@ -71,7 +72,7 @@ export default function Sidebar() {
         {!sidebarCollapsed && (
           <div className="flex items-center gap-3">
             {(settings.logo_path || settings.logo) ? (
-              <img src={(settings.logo_path || settings.logo).startsWith('http') ? (settings.logo_path || settings.logo) : ('http://localhost:8000/' + ((settings.logo_path || settings.logo).replace(/^\//, '').startsWith('storage') ? '' : 'storage/') + (settings.logo_path || settings.logo).replace(/^\//, ''))} alt="Logo" className="w-10 h-10 object-contain rounded bg-white p-1 shadow-lg" />
+              <img src={(settings.logo_path || settings.logo).startsWith('http') ? (settings.logo_path || settings.logo) : ((settings.logo_path || settings.logo).startsWith('/') ? (settings.logo_path || settings.logo) : '/' + (settings.logo_path || settings.logo))} alt="Logo" className="w-10 h-10 object-contain rounded bg-white p-1 shadow-lg" />
             ) : (
               <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
                 {settings.company_name_ar ? settings.company_name_ar.charAt(0) : 'م'}
@@ -89,7 +90,7 @@ export default function Sidebar() {
         )}
         {sidebarCollapsed && (
           (settings.logo_path || settings.logo) ? (
-            <img src={(settings.logo_path || settings.logo).startsWith('http') ? (settings.logo_path || settings.logo) : ('http://localhost:8000/' + ((settings.logo_path || settings.logo).replace(/^\//, '').startsWith('storage') ? '' : 'storage/') + (settings.logo_path || settings.logo).replace(/^\//, ''))} alt="Logo" className="w-10 h-10 mx-auto object-contain rounded bg-white p-1" />
+            <img src={(settings.logo_path || settings.logo).startsWith('http') ? (settings.logo_path || settings.logo) : ((settings.logo_path || settings.logo).startsWith('/') ? (settings.logo_path || settings.logo) : '/' + (settings.logo_path || settings.logo))} alt="Logo" className="w-10 h-10 mx-auto object-contain rounded bg-white p-1" />
           ) : (
             <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-bold text-lg mx-auto">
               {settings.company_name_ar ? settings.company_name_ar.charAt(0) : 'م'}

@@ -11,6 +11,28 @@ class ClientController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        // Auto-sync existing clients to leads (Temporary logic to bypass SSH)
+        $unsynced = \App\Models\Client::whereNull('lead_id')->get();
+        foreach($unsynced as $c) {
+            $l = \App\Models\Lead::create([
+                'tenant_id' => $c->tenant_id,
+                'name' => $c->name,
+                'company_name' => $c->company_name,
+                'mobile' => $c->mobile,
+                'whatsapp' => $c->whatsapp,
+                'email' => $c->email,
+                'country' => $c->country,
+                'source' => $c->source ?? 'إضافة مباشرة',
+                'stage' => 'won',
+                'priority' => 'normal',
+                'assigned_to' => $c->assigned_to,
+                'created_by' => $c->created_by,
+                'converted_to_client_id' => $c->id,
+                'lead_number' => 'LD-'.date('Y').'-'.str_pad(\App\Models\Lead::where('tenant_id', $c->tenant_id)->count()+1, 4, '0', STR_PAD_LEFT)
+            ]);
+            $c->update(['lead_id' => $l->id]);
+        }
+
         $query = Client::where('tenant_id', $request->user()->tenant_id)
             ->with(['assignedUser:id,name']);
 
@@ -53,6 +75,27 @@ class ClientController extends Controller
         }
 
         $client = Client::create($validated);
+
+        // Automatically create a 'won' lead so this client appears in the CRM Leads board
+        $lead = \App\Models\Lead::create([
+            'tenant_id' => $client->tenant_id,
+            'name' => $client->name,
+            'company_name' => $client->company_name,
+            'mobile' => $client->mobile,
+            'whatsapp' => $client->whatsapp,
+            'email' => $client->email,
+            'country' => $client->country,
+            'source' => $client->source ?? 'إضافة مباشرة',
+            'stage' => 'won',
+            'priority' => 'normal',
+            'assigned_to' => $client->assigned_to,
+            'created_by' => $client->created_by,
+            'converted_to_client_id' => $client->id,
+            'lead_number' => 'LD-' . date('Y') . '-' . str_pad(\App\Models\Lead::where('tenant_id', $client->tenant_id)->count() + 1, 4, '0', STR_PAD_LEFT),
+        ]);
+
+        $client->update(['lead_id' => $lead->id]);
+
         return response()->json($client, 201);
     }
 

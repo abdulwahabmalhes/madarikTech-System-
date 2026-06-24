@@ -5,8 +5,11 @@ import api from '@/lib/api'
 import { 
   Building2, Phone, Mail, MapPin, Tag, Briefcase, 
   Wallet, FileText, ChevronRight, Activity, Globe,
-  CheckCircle2, Clock
+  CheckCircle2, Clock, Edit2, Trash2, Plus
 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import InvoiceFormModal from '@/features/invoices/components/InvoiceFormModal'
+import { QuotationFormModal } from '@/features/quotations/components/QuotationFormModal'
 
 const TYPE_MAP: Record<string, string> = {
   company: 'شركة', individual: 'فرد'
@@ -24,9 +27,41 @@ export default function ClientDetailPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('projects')
 
+  const [showEditClient, setShowEditClient] = useState(false)
+  const [editClientForm, setEditClientForm] = useState({ name: '', company_name: '', mobile: '', email: '', type: 'company', source: '' })
+  
+  const [showAddProject, setShowAddProject] = useState(false)
+  const [projectForm, setProjectForm] = useState({ name: '', status: 'planning', expected_end_date: '' })
+  
+  const [showAddContract, setShowAddContract] = useState(false)
+  const [contractForm, setContractForm] = useState({ title: '', status: 'draft', start_date: '', value: '' })
+  
+  const [showAddInvoice, setShowAddInvoice] = useState(false)
+  const [showAddQuotation, setShowAddQuotation] = useState(false)
+
   const statusMutation = useMutation({
     mutationFn: (status: string) => api.put(`/clients/${id}`, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['client', id] })
+  })
+
+  const editClientMutation = useMutation({
+    mutationFn: (data: any) => api.put(`/clients/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['client', id] }); setShowEditClient(false) }
+  })
+  
+  const deleteClientMutation = useMutation({
+    mutationFn: () => api.delete(`/clients/${id}`),
+    onSuccess: () => navigate('/clients')
+  })
+
+  const addProjectMutation = useMutation({
+    mutationFn: (data: any) => api.post('/projects', { ...data, client_id: id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['client', id] }); setShowAddProject(false); setProjectForm({ name: '', status: 'planning', expected_end_date: '' }) }
+  })
+
+  const addContractMutation = useMutation({
+    mutationFn: (data: any) => api.post('/contracts', { ...data, client_id: id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['client', id] }); setShowAddContract(false); setContractForm({ title: '', status: 'draft', start_date: '', value: '' }) }
   })
 
   // We can fetch financials from custom endpoint or assume the backend provided them if we expand the backend.
@@ -51,11 +86,23 @@ export default function ClientDetailPage() {
   return (
     <div className="space-y-6">
       {/* Top Bar Navigation */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/clients')} className="p-2 bg-[hsl(var(--surface))] rounded-lg hover:bg-[hsl(var(--surface-hover))] text-[hsl(var(--muted))] transition-colors">
-          <ChevronRight size={18} />
-        </button>
-        <h2 className="text-xl font-bold text-[hsl(var(--foreground))]">تفاصيل العميل</h2>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/clients')} className="p-2 bg-[hsl(var(--surface))] rounded-lg hover:bg-[hsl(var(--surface-hover))] text-[hsl(var(--muted))] transition-colors">
+            <ChevronRight size={18} />
+          </button>
+          <h2 className="text-xl font-bold text-[hsl(var(--foreground))]">تفاصيل العميل</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => {
+            setEditClientForm({
+              name: client.name, company_name: client.company_name || '', mobile: client.mobile || '', email: client.email || '', type: client.type || 'company', source: client.source || ''
+            }); setShowEditClient(true)
+          }} className="btn-secondary text-sm h-9 px-3"><Edit2 size={16} /> تعديل</button>
+          <button onClick={() => {
+            if(confirm('هل أنت متأكد من حذف هذا العميل نهائياً؟')) deleteClientMutation.mutate()
+          }} className="btn-secondary text-red-500 hover:bg-red-50 hover:border-red-200 text-sm h-9 px-3"><Trash2 size={16} /> حذف</button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -253,6 +300,7 @@ export default function ClientDetailPage() {
                     <h3 className="font-bold flex items-center gap-2">
                       <FolderKanban size={18} className="text-emerald-500" /> المشاريع
                     </h3>
+                    <button onClick={() => setShowAddProject(true)} className="btn-primary text-xs py-1.5 px-3"><Plus size={14} /> إضافة مشروع</button>
                   </div>
                   {projects.length > 0 ? (
                     <div className="space-y-3">
@@ -292,6 +340,7 @@ export default function ClientDetailPage() {
                     <h3 className="font-bold flex items-center gap-2">
                       <FileText size={18} className="text-green-500" /> الفواتير
                     </h3>
+                    <button onClick={() => setShowAddInvoice(true)} className="btn-primary text-xs py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white border-none"><Plus size={14} /> إنشاء فاتورة</button>
                   </div>
                   {(client.invoices && client.invoices.length > 0) ? (
                     <div className="space-y-3">
@@ -316,6 +365,7 @@ export default function ClientDetailPage() {
                     <h3 className="font-bold flex items-center gap-2">
                       <FileText size={18} className="text-emerald-500" /> عروض الأسعار
                     </h3>
+                    <button onClick={() => setShowAddQuotation(true)} className="btn-primary text-xs py-1.5 px-3"><Plus size={14} /> إنشاء عرض سعر</button>
                   </div>
                   {(client.quotations && client.quotations.length > 0) ? (
                     <div className="space-y-3">
@@ -340,6 +390,7 @@ export default function ClientDetailPage() {
                     <h3 className="font-bold flex items-center gap-2">
                       <FileText size={18} className="text-amber-500" /> العقود
                     </h3>
+                    <button onClick={() => setShowAddContract(true)} className="btn-primary text-xs py-1.5 px-3 bg-amber-500 hover:bg-amber-600 border-none text-white"><Plus size={14} /> إنشاء عقد</button>
                   </div>
                   {(client.contracts && client.contracts.length > 0) ? (
                     <div className="space-y-3">
@@ -362,6 +413,102 @@ export default function ClientDetailPage() {
 
         </div>
       </div>
+
+      {/* Edit Client Modal */}
+      <Modal isOpen={showEditClient} onClose={() => setShowEditClient(false)} title="تعديل العميل">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">النوع</label>
+            <select value={editClientForm.type} onChange={e => setEditClientForm({...editClientForm, type: e.target.value})} className="form-input">
+              <option value="company">شركة</option>
+              <option value="individual">فرد</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">اسم العميل (جهة الاتصال)</label>
+            <input value={editClientForm.name} onChange={e => setEditClientForm({...editClientForm, name: e.target.value})} className="form-input" placeholder="اسم جهة الاتصال الأساسية" />
+          </div>
+          {editClientForm.type === 'company' && (
+            <div>
+              <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">اسم الشركة</label>
+              <input value={editClientForm.company_name} onChange={e => setEditClientForm({...editClientForm, company_name: e.target.value})} className="form-input" placeholder="اسم الشركة" />
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">رقم الجوال</label>
+            <input value={editClientForm.mobile} onChange={e => setEditClientForm({...editClientForm, mobile: e.target.value})} className="form-input" dir="ltr" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">البريد الإلكتروني</label>
+            <input value={editClientForm.email} onChange={e => setEditClientForm({...editClientForm, email: e.target.value})} className="form-input" dir="ltr" />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <button className="btn-secondary" onClick={() => setShowEditClient(false)}>إلغاء</button>
+            <button 
+              className="btn-primary" 
+              onClick={() => editClientMutation.mutate(editClientForm)}
+              disabled={!editClientForm.name || editClientMutation.isPending}
+            >
+              {editClientMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Project Modal */}
+      <Modal isOpen={showAddProject} onClose={() => setShowAddProject(false)} title="إضافة مشروع جديد">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">اسم المشروع</label>
+            <input value={projectForm.name} onChange={e => setProjectForm({...projectForm, name: e.target.value})} className="form-input" placeholder="اسم المشروع" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">تاريخ الانتهاء المتوقع</label>
+            <input type="date" value={projectForm.expected_end_date} onChange={e => setProjectForm({...projectForm, expected_end_date: e.target.value})} className="form-input" />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <button className="btn-secondary" onClick={() => setShowAddProject(false)}>إلغاء</button>
+            <button 
+              className="btn-primary" 
+              onClick={() => addProjectMutation.mutate(projectForm)}
+              disabled={!projectForm.name || addProjectMutation.isPending}
+            >
+              {addProjectMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ المشروع'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Contract Modal */}
+      <Modal isOpen={showAddContract} onClose={() => setShowAddContract(false)} title="إنشاء عقد جديد">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">عنوان العقد</label>
+            <input value={contractForm.title} onChange={e => setContractForm({...contractForm, title: e.target.value})} className="form-input" placeholder="مثال: عقد تصميم موقع" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">القيمة (د.إ)</label>
+            <input type="number" value={contractForm.value} onChange={e => setContractForm({...contractForm, value: e.target.value})} className="form-input" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">تاريخ البداية</label>
+            <input type="date" value={contractForm.start_date} onChange={e => setContractForm({...contractForm, start_date: e.target.value})} className="form-input" />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <button className="btn-secondary" onClick={() => setShowAddContract(false)}>إلغاء</button>
+            <button 
+              className="btn-primary" 
+              onClick={() => addContractMutation.mutate(contractForm)}
+              disabled={!contractForm.title || addContractMutation.isPending}
+            >
+              {addContractMutation.isPending ? 'جارٍ الحفظ...' : 'إنشاء العقد'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {showAddInvoice && <InvoiceFormModal invoice={null} isEditing={false} onClose={() => { setShowAddInvoice(false); queryClient.invalidateQueries({ queryKey: ['client', id] }) }} />}
+      {showAddQuotation && <QuotationFormModal quotation={null} isEditing={false} onClose={() => { setShowAddQuotation(false); queryClient.invalidateQueries({ queryKey: ['client', id] }) }} />}
     </div>
   )
 }

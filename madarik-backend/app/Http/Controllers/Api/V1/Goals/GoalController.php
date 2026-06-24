@@ -30,6 +30,7 @@ class GoalController extends Controller
             'title' => 'required|string|max:255',
             'type' => 'required|string',
             'target_value' => 'required|numeric',
+            'current_value' => 'nullable|numeric',
             'unit' => 'nullable|string',
             'period_type' => 'required|string',
             'period_start' => 'required|date',

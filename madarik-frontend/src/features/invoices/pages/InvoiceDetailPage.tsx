@@ -46,9 +46,7 @@ export default function InvoiceDetailPage() {
     const finalPath = path || s.logo_path || s.logo
     if (!finalPath) return ''
     if (finalPath.startsWith('http')) return finalPath
-    const cleanPath = finalPath.startsWith('/') ? finalPath.substring(1) : finalPath;
-    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000'
-    return `${baseUrl}/${cleanPath.includes('storage') ? cleanPath : 'storage/' + cleanPath}`
+    return finalPath.startsWith('/') ? finalPath : '/' + finalPath
   }
 
   function PageHeader() {

@@ -3,13 +3,14 @@ import { PrintTemplate } from '@/components/ui/PrintTemplate'
 import { useState } from 'react'
 import api from '@/lib/api'
 import { Modal } from '@/components/ui/Modal'
-import { ClipboardList, Plus, Search, Send, Calendar, User, Printer, FileText, Share2, CheckSquare } from 'lucide-react'
+import { ClipboardList, Plus, Search, Send, Calendar, User, Printer, FileText, Share2, CheckSquare, Edit2, Trash2 } from 'lucide-react'
 
 export default function DailyReportsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [showView, setShowView] = useState<any>(null)
+  const [reportToEdit, setReportToEdit] = useState<any>(null)
   
   const [form, setForm] = useState({
     title: '', project_id: '', client_id: '', report_date: new Date().toISOString().split('T')[0],
@@ -37,6 +38,24 @@ export default function DailyReportsPage() {
         period_type: 'weekly', work_completed: '', next_steps: '', issues: '', completion_percent: 0
       })
     }
+  })
+
+  const editMutation = useMutation({
+    mutationFn: (data: any) => api.put(`/daily-reports/${reportToEdit.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] })
+      setShowAdd(false)
+      setReportToEdit(null)
+      setForm({
+        title: '', project_id: '', client_id: '', report_date: new Date().toISOString().split('T')[0],
+        period_type: 'weekly', work_completed: '', next_steps: '', issues: '', completion_percent: 0
+      })
+    }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/daily-reports/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['daily-reports'] })
   })
 
   const reports = data?.data ?? []
@@ -108,7 +127,14 @@ export default function DailyReportsPage() {
           <h2 className="text-xl font-bold text-[hsl(var(--foreground))]">التقارير الأسبوعية</h2>
           <p className="text-sm text-[hsl(var(--muted))]">{reports.length} تقرير مسجل</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAdd(true)}>
+        <button className="btn-primary" onClick={() => {
+          setReportToEdit(null)
+          setForm({
+            title: '', project_id: '', client_id: '', report_date: new Date().toISOString().split('T')[0],
+            period_type: 'weekly', work_completed: '', next_steps: '', issues: '', completion_percent: 0
+          })
+          setShowAdd(true)
+        }}>
           <Plus size={16} /> تقرير جديد
         </button>
       </div>
@@ -150,9 +176,35 @@ export default function DailyReportsPage() {
                 <button className="flex-1 flex justify-center items-center btn-secondary py-1.5 text-xs bg-[hsl(var(--surface))] border-transparent" onClick={(e) => { e.stopPropagation(); setShowView(r) }}>
                   عرض التفاصيل
                 </button>
-                <button className="flex justify-center items-center p-1.5 rounded-md text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 transition-colors" onClick={(e) => { e.stopPropagation(); shareOnWhatsApp(r) }} title="مشاركة عبر الواتساب">
-                  <Share2 size={16} />
-                </button>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button className="flex justify-center items-center p-1.5 rounded-md text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 transition-colors" onClick={(e) => { e.stopPropagation(); shareOnWhatsApp(r) }} title="مشاركة عبر الواتساب">
+                    <Share2 size={16} />
+                  </button>
+                  <button className="flex justify-center items-center p-1.5 rounded-md text-[hsl(var(--muted))] hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-gray-200 dark:border-gray-700 transition-colors" onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setReportToEdit(r);
+                    setForm({
+                      title: r.title,
+                      project_id: r.project_id || '',
+                      client_id: r.client_id || '',
+                      report_date: r.report_date ? new Date(r.report_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                      period_type: r.period_type || 'weekly',
+                      work_completed: r.work_completed || '',
+                      next_steps: r.next_steps || '',
+                      issues: r.issues || '',
+                      completion_percent: r.completion_percent || 0
+                    });
+                    setShowAdd(true);
+                  }} title="تعديل التقرير">
+                    <Edit2 size={16} />
+                  </button>
+                  <button className="flex justify-center items-center p-1.5 rounded-md text-[hsl(var(--muted))] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 border border-gray-200 dark:border-gray-700 transition-colors" onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) deleteMutation.mutate(r.id);
+                  }} title="حذف التقرير">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -161,7 +213,14 @@ export default function DailyReportsPage() {
         <div className="glass-card p-12 text-center print-hidden">
           <ClipboardList size={40} className="mx-auto text-[hsl(var(--muted))] mb-3 opacity-40" />
           <p className="text-[hsl(var(--muted))]">لا توجد تقارير مسجّلة</p>
-          <button className="btn-primary mt-4 mx-auto" onClick={() => setShowAdd(true)}>
+          <button className="btn-primary mt-4 mx-auto" onClick={() => {
+            setReportToEdit(null)
+            setForm({
+              title: '', project_id: '', client_id: '', report_date: new Date().toISOString().split('T')[0],
+              period_type: 'weekly', work_completed: '', next_steps: '', issues: '', completion_percent: 0
+            })
+            setShowAdd(true)
+          }}>
             <Plus size={16} /> إنشاء أول تقرير أسبوعي
           </button>
         </div>
@@ -281,7 +340,7 @@ export default function DailyReportsPage() {
       )}
 
       {/* Add Report Modal */}
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="إنشاء تقرير أسبوعي جديد" size="md">
+      <Modal isOpen={showAdd} onClose={() => { setShowAdd(false); setReportToEdit(null); }} title={reportToEdit ? "تعديل التقرير الأسبوعي" : "إنشاء تقرير أسبوعي جديد"} size="md">
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">عنوان التقرير</label>
@@ -334,13 +393,13 @@ export default function DailyReportsPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <button className="btn-secondary" onClick={() => setShowAdd(false)}>إلغاء</button>
+            <button className="btn-secondary" onClick={() => { setShowAdd(false); setReportToEdit(null); }}>إلغاء</button>
             <button 
               className="btn-primary" 
-              onClick={() => addMutation.mutate(form)}
-              disabled={!form.title || !form.project_id || addMutation.isPending}
+              onClick={() => reportToEdit ? editMutation.mutate(form) : addMutation.mutate(form)}
+              disabled={!form.title || !form.project_id || addMutation.isPending || editMutation.isPending}
             >
-              {addMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ التقرير'}
+              {addMutation.isPending || editMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ التقرير'}
             </button>
           </div>
         </div>

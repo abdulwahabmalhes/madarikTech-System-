@@ -31,6 +31,10 @@ class MeetingController extends Controller
             $data['meeting_number'] = 'MTG-' . strtoupper(uniqid());
         }
 
+        if (isset($data['external_attendees']) && !is_array($data['external_attendees'])) {
+            $data['external_attendees'] = $data['external_attendees'] ? array_map('trim', explode(',', $data['external_attendees'])) : null;
+        }
+
         return response()->json(Meeting::create($data), 201);
     }
 
@@ -45,7 +49,13 @@ class MeetingController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $m = Meeting::where('tenant_id', $request->user()->tenant_id)->findOrFail($id);
-        $m->update($request->all());
+        
+        $data = $request->all();
+        if (isset($data['external_attendees']) && !is_array($data['external_attendees'])) {
+            $data['external_attendees'] = $data['external_attendees'] ? array_map('trim', explode(',', $data['external_attendees'])) : null;
+        }
+
+        $m->update($data);
         return response()->json($m);
     }
 

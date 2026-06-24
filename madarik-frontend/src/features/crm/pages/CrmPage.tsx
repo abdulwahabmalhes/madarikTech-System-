@@ -27,7 +27,7 @@ function LeadCard({ lead, onStageChange }: { lead: any, onStageChange: (id: numb
   return (
     <div 
       onClick={() => navigate(`/crm/leads/${lead.id}`)}
-      className={`bg-white dark:bg-slate-900 rounded-xl p-3 mb-2 shadow-sm border-s-4 ${priorityColor} hover:shadow-md transition-all cursor-pointer`}
+      className={`bg-[hsl(var(--surface))] rounded-xl p-3 mb-2 shadow-sm border-s-4 ${priorityColor} hover:shadow-md transition-all cursor-pointer`}
     >
       {/* Name */}
       <div className="font-semibold text-sm text-[hsl(var(--foreground))] mb-1 truncate">{lead.name}</div>

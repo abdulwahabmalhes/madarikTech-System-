@@ -22,10 +22,23 @@ class ContractController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->all();
-        $data['tenant_id'] = $request->user()->tenant_id;
-        $data['created_by'] = $request->user()->id;
-        return response()->json(Contract::create($data), 201);
+        try {
+            $data = $request->all();
+            $data['tenant_id'] = $request->user()->tenant_id;
+            $data['created_by'] = $request->user()->id;
+            
+            if (empty($data['contract_number'])) {
+                $data['contract_number'] = 'CT-' . date('Y') . '-' . strtoupper(substr(uniqid(), -4));
+            }
+
+            if (empty($data['type'])) {
+                $data['type'] = 'standard';
+            }
+
+            return response()->json(Contract::create($data), 201);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function show(Request $request, int $id): JsonResponse
@@ -38,9 +51,13 @@ class ContractController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
-        $c = Contract::where('tenant_id', $request->user()->tenant_id)->findOrFail($id);
-        $c->update($request->all());
-        return response()->json($c);
+        try {
+            $c = Contract::where('tenant_id', $request->user()->tenant_id)->findOrFail($id);
+            $c->update($request->all());
+            return response()->json($c);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function destroy(Request $request, int $id): JsonResponse

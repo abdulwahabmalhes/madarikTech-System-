@@ -50,7 +50,7 @@ export function MeetingFormModal({ meeting, onClose }: MeetingFormModalProps) {
         end_time: meeting.end_time || '',
         location: meeting.location || '',
         status: meeting.status || 'scheduled',
-        external_attendees: meeting.external_attendees || '',
+        external_attendees: meeting.external_attendees ? (Array.isArray(meeting.external_attendees) ? meeting.external_attendees.join(', ') : meeting.external_attendees) : '',
       })
     }
   }, [meeting])
@@ -101,9 +101,9 @@ export function MeetingFormModal({ meeting, onClose }: MeetingFormModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-200 mb-1.5">العميل</label>
-              <select value={formData.client_id} onChange={e => setFormData({ ...formData, client_id: e.target.value })} className="form-input">
-                <option value="">-- بدون عميل --</option>
+              <label className="block text-sm font-medium text-gray-900 dark:text-gray-200 mb-1.5">العميل *</label>
+              <select required value={formData.client_id} onChange={e => setFormData({ ...formData, client_id: e.target.value })} className="form-input">
+                <option value="">-- اختر العميل --</option>
                 {clients.map((c: any) => (
                   <option key={c.id} value={c.id}>{c.company_name || c.name}</option>
                 ))}

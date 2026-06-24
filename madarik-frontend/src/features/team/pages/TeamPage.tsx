@@ -61,8 +61,9 @@ export default function TeamPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {members.map((member: any) => {
             const roles: any[] = member.roles ?? []
-            const primaryRole = roles[0]?.name ?? 'employee'
-            const roleInfo = ROLE_MAP[primaryRole] ?? { label: primaryRole, badge: 'badge-gray' }
+            const firstRole = roles[0]
+            const primaryRole = typeof firstRole === 'string' ? firstRole : (firstRole?.name ?? 'بدون صلاحية')
+            const roleInfo = { label: primaryRole, badge: 'badge-gray' }
 
             return (
               <div key={member.id} className="glass-card p-5 group relative">

@@ -33,10 +33,11 @@ class SettingsController extends Controller
             if ($request->hasFile($key)) {
                 $file = $request->file($key);
                 if (is_array($file)) {
-                    $file = $file[0]; // just in case it's an array
+                    $file = $file[0];
                 }
+                
                 $path = $file->store('settings', 'public');
-                $value = '/storage/' . $path;
+                $value = '/api/v1/files/' . $path;
             }
 
             // Skip updating files if they were not uploaded in this request

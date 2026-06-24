@@ -42,12 +42,14 @@ import MeetingsPage from '@/features/meetings/pages/MeetingsPage'
 
 // Other Modules
 import ProductsPage from '@/features/products/pages/ProductsPage'
+import ProductDetailPage from '@/features/products/pages/ProductDetailPage'
 import RenewalsPage from '@/features/renewals/pages/RenewalsPage'
 import GoalsPage from '@/features/goals/pages/GoalsPage'
 import AssetsPage from '@/features/assets/pages/AssetsPage'
 import SupportPage from '@/features/support/pages/SupportPage'
 import CalendarPage from '@/features/calendar/pages/CalendarPage'
 import TeamPage from '@/features/team/pages/TeamPage'
+import RolesPage from '@/features/team/pages/RolesPage'
 import KnowledgePage from '@/features/knowledge/pages/KnowledgePage'
 import SettingsPage from '@/features/settings/pages/SettingsPage'
 import NotificationsPage from '@/features/notifications/pages/NotificationsPage'
@@ -112,12 +114,14 @@ export default function App() {
 
           {/* Other Modules */}
           <Route path="products" element={<ProductsPage />} />
+          <Route path="products/:id" element={<ProductDetailPage />} />
           <Route path="renewals" element={<RenewalsPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="assets" element={<AssetsPage />} />
           <Route path="support" element={<SupportPage />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="team" element={<TeamPage />} />
+          <Route path="team/roles" element={<RolesPage />} />
           <Route path="knowledge" element={<KnowledgePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />

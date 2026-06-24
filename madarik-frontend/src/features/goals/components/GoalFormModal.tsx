@@ -56,14 +56,22 @@ export default function GoalFormModal({ isOpen, onClose, goalToEdit }: GoalFormM
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => {
+      const payload = { ...data }
+      if (payload.current_value === '') payload.current_value = 0
+      if (payload.target_value === '') payload.target_value = 0
+      
       if (goalToEdit) {
-        return api.put(`/goals/${goalToEdit.id}`, data)
+        return api.put(`/goals/${goalToEdit.id}`, payload)
       }
-      return api.post('/goals', data)
+      return api.post('/goals', payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] })
       onClose()
+    },
+    onError: (err: any) => {
+      alert('حدث خطأ: \n' + (err.response?.data?.message || err.message))
+      console.error(err)
     }
   })
 
@@ -110,17 +118,18 @@ export default function GoalFormModal({ isOpen, onClose, goalToEdit }: GoalFormM
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold">القيمة المستهدفة</label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <input 
-                  type="number" 
-                  className="form-input flex-1" 
+                  type="text" 
+                  className="form-input col-span-2" 
+                  placeholder="الرقم (مثال: 50000)"
                   value={formData.target_value}
-                  onChange={e => setFormData({...formData, target_value: e.target.value})}
+                  onChange={e => setFormData({...formData, target_value: e.target.value.replace(/[^0-9.]/g, '')})}
                 />
                 <input 
                   type="text" 
-                  className="form-input w-20 text-center" 
-                  placeholder="الوحدة"
+                  className="form-input col-span-1 text-center" 
+                  placeholder="الوحدة (AED)"
                   value={formData.unit}
                   onChange={e => setFormData({...formData, unit: e.target.value})}
                 />
@@ -175,9 +184,13 @@ export default function GoalFormModal({ isOpen, onClose, goalToEdit }: GoalFormM
             إلغاء
           </button>
           <button 
-            onClick={() => saveMutation.mutate(formData)}
-            disabled={saveMutation.isPending || !formData.title || !formData.target_value}
-            className="btn-primary"
+            onClick={() => {
+              if (!formData.title) return alert('يرجى إدخال عنوان الهدف')
+              if (!formData.target_value) return alert('يرجى إدخال القيمة المستهدفة (أرقام فقط)')
+              saveMutation.mutate(formData)
+            }}
+            disabled={saveMutation.isPending}
+            className={`btn-primary ${saveMutation.isPending ? 'opacity-50' : ''}`}
           >
             <Save size={16} />
             {saveMutation.isPending ? 'جاري الحفظ...' : 'حفظ'}

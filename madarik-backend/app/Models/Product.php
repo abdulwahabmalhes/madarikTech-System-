@@ -19,6 +19,7 @@ class Product extends Model
         'is_active', 'sort_order',
         'setup_fee', 'setup_days',
         'min_contract_months',
+        'video_url', 'documentation_url', 'delivery_method', 'ideas',
     ];
 
     protected $casts = [
@@ -31,4 +32,16 @@ class Product extends Model
 
     public function createdBy(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
+    
+    public function invoiceItems()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function invoices()
+    {
+        // Get unique invoices through invoice items
+        return $this->hasManyThrough(Invoice::class, InvoiceItem::class, 'product_id', 'id', 'id', 'invoice_id')
+                    ->distinct();
+    }
 }

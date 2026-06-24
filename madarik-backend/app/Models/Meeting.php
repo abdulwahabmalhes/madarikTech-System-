@@ -20,6 +20,9 @@ class Meeting extends Model
 
     protected $casts = [
         'meeting_date' => 'datetime',
+        'date' => 'date',
+        'internal_attendees' => 'array',
+        'external_attendees' => 'array',
         'attendees' => 'array',
     ];
 

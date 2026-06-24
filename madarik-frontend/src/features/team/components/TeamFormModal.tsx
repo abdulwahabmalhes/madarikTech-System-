@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Save, Shield } from 'lucide-react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 
 interface TeamFormModalProps {
@@ -9,23 +9,23 @@ interface TeamFormModalProps {
   memberToEdit?: any
 }
 
-const ROLES = [
-  { id: 'employee', label: 'موظف' },
-  { id: 'accountant', label: 'محاسب' },
-  { id: 'project-manager', label: 'مدير مشاريع' },
-  { id: 'sales-manager', label: 'مدير مبيعات' },
-  { id: 'super-admin', label: 'مسؤول رئيسي' },
-]
-
 export default function TeamFormModal({ isOpen, onClose, memberToEdit }: TeamFormModalProps) {
   const queryClient = useQueryClient()
+  
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => api.get('/roles').then(r => r.data),
+    enabled: isOpen
+  })
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     mobile: '',
     department: '',
     position: '',
-    role: 'employee',
+    role: '',
+    password: '',
   })
 
   useEffect(() => {
@@ -36,7 +36,8 @@ export default function TeamFormModal({ isOpen, onClose, memberToEdit }: TeamFor
         mobile: memberToEdit.mobile || '',
         department: memberToEdit.department || '',
         position: memberToEdit.position || '',
-        role: memberToEdit.roles?.[0]?.name || 'employee',
+        role: (typeof memberToEdit.roles?.[0] === 'string' ? memberToEdit.roles[0] : memberToEdit.roles?.[0]?.name) || '',
+        password: '',
       })
     } else {
       setFormData({
@@ -45,21 +46,29 @@ export default function TeamFormModal({ isOpen, onClose, memberToEdit }: TeamFor
         mobile: '',
         department: '',
         position: '',
-        role: 'employee',
+        role: roles.length > 0 ? roles[0].name : '',
+        password: '',
       })
     }
-  }, [memberToEdit, isOpen])
+  }, [memberToEdit, isOpen, roles])
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => {
+      const payload = { ...data }
+      if (!payload.password) delete payload.password
+      
       if (memberToEdit) {
-        return api.put(`/team/${memberToEdit.id}`, data)
+        return api.put(`/team/${memberToEdit.id}`, payload)
       }
-      return api.post('/team/invite', data)
+      return api.post('/team', payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team'] })
       onClose()
+    },
+    onError: (err: any) => {
+      alert('حدث خطأ: \n' + (err.response?.data?.message || err.message))
+      console.error(err)
     }
   })
 
@@ -131,17 +140,30 @@ export default function TeamFormModal({ isOpen, onClose, memberToEdit }: TeamFor
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-semibold">الصلاحية (الدور)</label>
-            <select 
-              className="form-input"
-              value={formData.role}
-              onChange={e => setFormData({...formData, role: e.target.value})}
-            >
-              {ROLES.map(role => (
-                <option key={role.id} value={role.id}>{role.label}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold">الصلاحية (الدور)</label>
+              <select 
+                className="form-input"
+                value={formData.role}
+                onChange={e => setFormData({...formData, role: e.target.value})}
+              >
+                <option value="" disabled>اختر الصلاحية...</option>
+                {roles.map((role: any) => (
+                  <option key={role.id} value={role.name}>{role.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold">كلمة المرور {memberToEdit && '(اتركه فارغاً لعدم التغيير)'}</label>
+              <input 
+                type="password" 
+                className="form-input text-left" dir="ltr"
+                placeholder={memberToEdit ? '********' : 'كلمة المرور...'}
+                value={formData.password}
+                onChange={e => setFormData({...formData, password: e.target.value})}
+              />
+            </div>
           </div>
         </div>
 
@@ -150,9 +172,13 @@ export default function TeamFormModal({ isOpen, onClose, memberToEdit }: TeamFor
             إلغاء
           </button>
           <button 
-            onClick={() => saveMutation.mutate(formData)}
-            disabled={saveMutation.isPending || !formData.name || !formData.email}
-            className="btn-primary"
+            onClick={() => {
+              if (!formData.name || !formData.email || !formData.role) return alert('يرجى إدخال الاسم والإيميل والدور')
+              if (!memberToEdit && !formData.password) return alert('يرجى تعيين كلمة مرور للعضو الجديد')
+              saveMutation.mutate(formData)
+            }}
+            disabled={saveMutation.isPending}
+            className={`btn-primary ${saveMutation.isPending ? 'opacity-50' : ''}`}
           >
             <Save size={16} />
             {saveMutation.isPending ? 'جاري الحفظ...' : 'حفظ'}

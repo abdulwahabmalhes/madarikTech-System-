@@ -50,7 +50,8 @@ class ProjectController extends Controller
                 'tasks',
                 'contracts:id,project_id,contract_number,value,status,start_date,end_date',
                 'invoices:id,project_id,invoice_number,total,status,issue_date,due_date',
-                'expenses:id,project_id,title,amount,category,date,notes'
+                'expenses:id,project_id,title,amount,category,date,notes',
+                'meetings'
             ])
             ->findOrFail($id);
         

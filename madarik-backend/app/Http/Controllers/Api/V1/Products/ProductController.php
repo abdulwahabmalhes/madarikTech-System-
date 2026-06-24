@@ -33,7 +33,13 @@ class ProductController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $product = Product::where('tenant_id', $request->user()->tenant_id)->findOrFail($id);
+        $product = Product::where('tenant_id', $request->user()->tenant_id)
+            ->with(['invoices.client'])
+            ->findOrFail($id);
+            
+        $product->sales_count = $product->invoiceItems()->sum('quantity') ?? 0;
+        $product->total_sales = $product->invoiceItems()->sum('total') ?? 0;
+
         return response()->json($product);
     }
 

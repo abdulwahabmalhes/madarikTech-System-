@@ -6,7 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import {
   FolderKanban, Plus, Search, AlertTriangle,
   Calendar, User, TrendingUp, Clock, CheckCircle2,
-  PauseCircle, XCircle, Loader2, BarChart3
+  PauseCircle, XCircle, Loader2, BarChart3, Edit2, Trash2
 } from 'lucide-react'
 
 const STATUS_MAP: Record<string, { label: string; badge: string; icon: any }> = {
@@ -38,6 +38,7 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState({ name: '', client_id: '', status: 'planning', expected_end_date: '' })
+  const [projectToEdit, setProjectToEdit] = useState<any>(null)
   const queryClient = useQueryClient()
 
   const addMutation = useMutation({
@@ -47,6 +48,21 @@ export default function ProjectsPage() {
       setShowAdd(false)
       setForm({ name: '', client_id: '', status: 'planning', expected_end_date: '' })
     }
+  })
+
+  const editMutation = useMutation({
+    mutationFn: (data: typeof form) => api.put(`/projects/${projectToEdit.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setShowAdd(false)
+      setProjectToEdit(null)
+      setForm({ name: '', client_id: '', status: 'planning', expected_end_date: '' })
+    }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/projects/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] })
   })
 
   const { data: clientsData } = useQuery({
@@ -80,7 +96,11 @@ export default function ProjectsPage() {
           <h2 className="text-xl font-bold text-[hsl(var(--foreground))]">المشاريع</h2>
           <p className="text-sm text-[hsl(var(--muted))]">{projects.length} مشروع إجمالاً</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAdd(true)}><Plus size={16} /> مشروع جديد</button>
+        <button className="btn-primary" onClick={() => {
+          setProjectToEdit(null)
+          setForm({ name: '', client_id: '', status: 'planning', expected_end_date: '' })
+          setShowAdd(true)
+        }}><Plus size={16} /> مشروع جديد</button>
       </div>
 
       {/* Stats Row */}
@@ -136,7 +156,7 @@ export default function ProjectsPage() {
               <Link
                 key={project.id}
                 to={`/projects/${project.id}`}
-                className={`glass-card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 block border-t-4 ${
+                className={`group glass-card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 block border-t-4 ${
                   isAtRisk ? 'border-t-red-400' : project.status === 'completed' ? 'border-t-emerald-400' : 'border-t-emerald-400'
                 }`}
               >
@@ -150,9 +170,42 @@ export default function ProjectsPage() {
                       {project.project_number}
                     </div>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${status.badge}`}>
-                    {status.label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setProjectToEdit(project)
+                          setForm({
+                            name: project.name,
+                            client_id: project.client_id || '',
+                            status: project.status || 'planning',
+                            expected_end_date: project.expected_end_date ? new Date(project.expected_end_date).toISOString().split('T')[0] : ''
+                          })
+                          setShowAdd(true)
+                        }} 
+                        className="p-1.5 text-[hsl(var(--muted))] hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        title="تعديل"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          if (confirm('هل أنت متأكد من حذف هذا المشروع؟')) deleteMutation.mutate(project.id)
+                        }} 
+                        className="p-1.5 text-[hsl(var(--muted))] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="حذف"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${status.badge}`}>
+                      {status.label}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Client */}
@@ -220,7 +273,7 @@ export default function ProjectsPage() {
       )}
 
       {/* Add Modal */}
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="إضافة مشروع جديد">
+      <Modal isOpen={showAdd} onClose={() => { setShowAdd(false); setProjectToEdit(null); }} title={projectToEdit ? "تعديل المشروع" : "إضافة مشروع جديد"}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">اسم المشروع</label>
@@ -240,18 +293,19 @@ export default function ProjectsPage() {
             <input type="date" value={form.expected_end_date} onChange={e => setForm({...form, expected_end_date: e.target.value})} className="form-input" />
           </div>
           <div className="flex justify-end gap-2 pt-4">
-            <button className="btn-secondary" onClick={() => setShowAdd(false)}>إلغاء</button>
+            <button className="btn-secondary" onClick={() => { setShowAdd(false); setProjectToEdit(null); }}>إلغاء</button>
             <button 
               className="btn-primary" 
               onClick={() => {
                 const payload: any = { ...form }
                 if (!payload.client_id) delete payload.client_id
                 if (!payload.expected_end_date) delete payload.expected_end_date
-                addMutation.mutate(payload as typeof form)
+                if (projectToEdit) editMutation.mutate(payload)
+                else addMutation.mutate(payload)
               }}
-              disabled={!form.name || addMutation.isPending}
+              disabled={!form.name || addMutation.isPending || editMutation.isPending}
             >
-              {addMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
+              {addMutation.isPending || editMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
             </button>
           </div>
         </div>

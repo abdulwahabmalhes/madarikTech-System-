@@ -18,61 +18,46 @@ export default function SettingsPage() {
     mutationFn: async (formData: FormData) => {
       formData.append('_method', 'PUT') // Laravel requires this for multipart/form-data PUT requests
       
-      const token = localStorage.getItem('madarik_token')
-      const response = await fetch('http://localhost:8000/api/v1/settings', {
-        method: 'POST',
+      const response = await api.post('/settings', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       })
-      
-      if (!response.ok) {
-        throw new Error('Failed to save')
-      }
-      return response.json()
+      return response.data
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['settings'] })
         alert('تم حفظ الإعدادات بنجاح')
+    },
+    onError: (error: any) => {
+        alert('حدث خطأ أثناء الحفظ: \n' + (error.response?.data?.message || error.message))
     }
   });
 
   // Mutation to update DB credentials
   const envMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const token = localStorage.getItem('madarik_token');
-      const response = await fetch('http://localhost:8000/api/v1/admin/env', {
-        method: 'POST',
+      const response = await api.post('/admin/env', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       });
-      if (!response.ok) throw new Error('Failed to update DB credentials');
-      return response.json();
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       alert('تم تحديث بيانات الدخول لقاعدة البيانات');
+    },
+    onError: (error: any) => {
+      alert('حدث خطأ: \n' + (error.response?.data?.message || error.message))
     }
   });
 
   // Mutation to reset database
   const resetMutation = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem('madarik_token');
-      const response = await fetch('http://localhost:8000/api/v1/admin/database-reset', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to reset database');
-      return response.json();
+      const response = await api.post('/admin/database-reset');
+      return response.data;
     },
     onSuccess: () => {
       alert('تم تصفير البيانات بنجاح');
@@ -82,16 +67,8 @@ export default function SettingsPage() {
   // Mutation to seed demo data
   const seedMutation = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem('madarik_token');
-      const response = await fetch('http://localhost:8000/api/v1/admin/database-seed', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to seed database');
-      return response.json();
+      const response = await api.post('/admin/database-seed');
+      return response.data;
     },
     onSuccess: () => {
       alert('تم حقن البيانات التجريبية بنجاح!');
@@ -183,7 +160,7 @@ export default function SettingsPage() {
             </label>
             <p className="text-xs text-[hsl(var(--muted))]">سيتم استخدام الشعار في ترويسة جميع ملفات الـ PDF</p>
             {(settings.logo_path || settings.logo) && (
-              <img src={'http://localhost:8000' + (settings.logo_path || settings.logo)} alt="Logo" className="h-16 object-contain rounded border border-gray-200 bg-white p-1" />
+              <img src={(settings.logo_path || settings.logo).startsWith('http') ? (settings.logo_path || settings.logo) : ((settings.logo_path || settings.logo).startsWith('/') ? (settings.logo_path || settings.logo) : '/' + (settings.logo_path || settings.logo))} alt="Logo" className="h-16 object-contain rounded border border-gray-200 bg-white p-1" />
             )}
             <input type="file" name="logo_path" accept="image/*" className="form-input text-sm" />
           </div>
@@ -195,7 +172,7 @@ export default function SettingsPage() {
             </label>
             <p className="text-xs text-[hsl(var(--muted))]">ارفع صورة الباركود الخاصة بالشركة لتظهر في التقارير</p>
             {settings.qr_code && (
-              <img src={'http://localhost:8000' + settings.qr_code} alt="QR Code" className="h-16 w-16 object-contain rounded border border-gray-200 bg-white p-1" />
+              <img src={settings.qr_code.startsWith('http') ? settings.qr_code : (settings.qr_code.startsWith('/') ? settings.qr_code : '/' + settings.qr_code)} alt="QR Code" className="h-16 w-16 object-contain rounded border border-gray-200 bg-white p-1" />
             )}
             <input type="file" name="qr_code" accept="image/*" className="form-input text-sm" />
           </div>

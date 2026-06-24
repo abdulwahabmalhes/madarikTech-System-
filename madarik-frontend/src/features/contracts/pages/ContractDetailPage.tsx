@@ -1,7 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import api from '@/lib/api'
-import { ChevronRight, Printer, Send, CheckCircle2, FileSignature, Receipt } from 'lucide-react'
+import { ChevronRight, Printer, Send, CheckCircle2, FileSignature, Receipt, Edit, Trash2 } from 'lucide-react'
+import { ContractFormModal } from '../components/ContractFormModal'
 
 const STATUS_MAP: any = {
   draft: { label: 'مسودة', badge: 'bg-gray-100 text-gray-700' },
@@ -14,6 +16,7 @@ export default function ContractDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   const { data: contract, isLoading: isLoadingContract } = useQuery({
     queryKey: ['contract', id],
@@ -41,6 +44,14 @@ export default function ContractDetailPage() {
     }
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => api.delete(`/contracts/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] })
+      navigate('/contracts')
+    }
+  })
+
   if (isLoadingContract || !contract) {
     return <div className="p-8 text-center text-gray-500">جاري تحميل العقد...</div>
   }
@@ -52,9 +63,7 @@ export default function ContractDetailPage() {
     const finalPath = path || s.logo_path || s.logo
     if (!finalPath) return ''
     if (finalPath.startsWith('http')) return finalPath
-    const cleanPath = finalPath.startsWith('/') ? finalPath.substring(1) : finalPath;
-    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:8000'
-    return `${baseUrl}/${cleanPath.includes('storage') ? cleanPath : 'storage/' + cleanPath}`
+    return finalPath.startsWith('/') ? finalPath : '/' + finalPath
   }
 
   const parseArray = (str: string | any) => {
@@ -127,6 +136,10 @@ export default function ContractDetailPage() {
           )}
 
           <button className="btn-secondary" onClick={() => window.print()}><Printer size={16} /> طباعة / تصدير PDF</button>
+          <button className="p-2 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors" onClick={() => setIsEditModalOpen(true)} title="تعديل العقد"><Edit size={16} /></button>
+          <button className="p-2 border border-red-200 text-red-500 rounded-lg hover:bg-red-50 transition-colors" onClick={() => {
+            if(confirm('هل أنت متأكد من حذف هذا العقد نهائياً؟')) deleteMutation.mutate()
+          }} disabled={deleteMutation.isPending} title="حذف العقد"><Trash2 size={16} /></button>
         </div>
       </div>
 
@@ -274,6 +287,8 @@ export default function ContractDetailPage() {
         }
         .a4-page { width: 210mm; min-height: 297mm; margin: 0 auto 2rem auto; background: white; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
       `}} />
+
+      <ContractFormModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} contractToEdit={contract} />
     </div>
   )
 }

@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import api from '@/lib/api'
 import { Modal } from '@/components/ui/Modal'
-import { Package, Plus, Search, Tag, DollarSign } from 'lucide-react'
+import { Package, Plus, Search, Tag, Edit2, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 const CATEGORY_MAP: Record<string, { label: string; badge: string }> = {
   saas:        { label: 'SaaS',        badge: 'badge-purple' },
@@ -21,9 +22,10 @@ export default function ProductsPage() {
   const [category, setCategory] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [showAddCategory, setShowAddCategory] = useState(false)
-  const [form, setForm] = useState({ name: '', name_ar: '', category: 'service', pricing_model: 'fixed', base_price: '', features: [] as string[] })
+  const [form, setForm] = useState({ name: '', name_ar: '', short_description: '', category: 'service', pricing_model: 'fixed', base_price: '', features: [] as string[] })
   const [newFeature, setNewFeature] = useState('')
   const [catForm, setCatForm] = useState({ name_ar: '', name: '', badge_color: 'badge-gray' })
+  const [productToEdit, setProductToEdit] = useState<any>(null)
   const queryClient = useQueryClient()
 
   const addMutation = useMutation({
@@ -31,9 +33,25 @@ export default function ProductsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setShowAdd(false)
-      setForm({ name: '', name_ar: '', category: 'service', pricing_model: 'fixed', base_price: '', features: [] })
+      setForm({ name: '', name_ar: '', short_description: '', category: 'service', pricing_model: 'fixed', base_price: '', features: [] })
       setNewFeature('')
     }
+  })
+
+  const editMutation = useMutation({
+    mutationFn: (data: typeof form) => api.put(`/products/${productToEdit.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      setShowAdd(false)
+      setProductToEdit(null)
+      setForm({ name: '', name_ar: '', short_description: '', category: 'service', pricing_model: 'fixed', base_price: '', features: [] })
+      setNewFeature('')
+    }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/products/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] })
   })
 
   const { data: categoriesData } = useQuery({
@@ -70,7 +88,11 @@ export default function ProductsPage() {
           <h2 className="text-xl font-bold text-[hsl(var(--foreground))]">المنتجات والخدمات</h2>
           <p className="text-sm text-[hsl(var(--muted))]">{products.length} منتج/خدمة</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAdd(true)}><Plus size={16} /> إضافة منتج</button>
+        <button className="btn-primary" onClick={() => {
+          setProductToEdit(null)
+          setForm({ name: '', name_ar: '', short_description: '', category: 'service', pricing_model: 'fixed', base_price: '', features: [] })
+          setShowAdd(true)
+        }}><Plus size={16} /> إضافة منتج</button>
       </div>
 
       {/* Filters */}
@@ -115,20 +137,46 @@ export default function ProductsPage() {
             })()
 
             return (
-              <div key={product.id} className="glass-card p-5 hover:shadow-md transition-all duration-200">
+              <div key={product.id} className="glass-card p-5 hover:shadow-md transition-all duration-200 group">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                    <Package size={20} className="text-white" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                      <Package size={20} className="text-white" />
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
+                      {cat.label}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
-                    {cat.label}
-                  </span>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => {
+                      setProductToEdit(product)
+                      setForm({
+                        name: product.name || '',
+                        name_ar: product.name_ar || '',
+                        short_description: product.short_description || '',
+                        category: product.category || 'service',
+                        pricing_model: product.pricing_model || 'fixed',
+                        base_price: product.base_price || '',
+                        features: features
+                      })
+                      setShowAdd(true)
+                    }} className="p-1.5 text-[hsl(var(--muted))] hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={() => {
+                      if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) deleteMutation.mutate(product.id)
+                    }} className="p-1.5 text-[hsl(var(--muted))] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Name */}
                 <div className="mb-2">
-                  <h3 className="font-semibold text-[hsl(var(--foreground))] mb-0.5">{product.name_ar || product.name}</h3>
+                  <Link to={`/products/${product.id}`} className="hover:text-emerald-600 transition-colors">
+                    <h3 className="font-semibold text-[hsl(var(--foreground))] mb-0.5">{product.name_ar || product.name}</h3>
+                  </Link>
                   {product.name_ar && product.name !== product.name_ar && (
                     <div className="text-xs text-[hsl(var(--muted))]">{product.name}</div>
                   )}
@@ -191,7 +239,7 @@ export default function ProductsPage() {
       )}
 
       {/* Add Modal */}
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="إضافة منتج أو خدمة">
+      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title={productToEdit ? "تعديل المنتج أو الخدمة" : "إضافة منتج أو خدمة"}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">الاسم بالعربية</label>
@@ -200,6 +248,10 @@ export default function ProductsPage() {
           <div>
             <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">الاسم بالإنجليزية</label>
             <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="form-input" placeholder="اسم المنتج/الخدمة بالإنجليزية (اختياري)" dir="ltr" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">الوصف (نبذة قصيرة)</label>
+            <textarea value={form.short_description} onChange={e => setForm({...form, short_description: e.target.value})} className="form-input min-h-[60px]" placeholder="وصف موجز للمنتج أو الخدمة..." />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -272,10 +324,10 @@ export default function ProductsPage() {
             <button className="btn-secondary" onClick={() => setShowAdd(false)}>إلغاء</button>
             <button 
               className="btn-primary" 
-              onClick={() => addMutation.mutate(form)}
-              disabled={(!form.name_ar && !form.name) || addMutation.isPending}
+              onClick={() => productToEdit ? editMutation.mutate(form) : addMutation.mutate(form)}
+              disabled={(!form.name_ar && !form.name) || addMutation.isPending || editMutation.isPending}
             >
-              {addMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
+              {addMutation.isPending || editMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
             </button>
           </div>
         </div>

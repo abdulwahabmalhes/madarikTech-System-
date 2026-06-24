@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { Modal } from '@/components/ui/Modal'
 import {
   CheckSquare, Plus, Search, CheckCircle2,
-  Clock, AlertTriangle, User, Calendar, Flag
+  Clock, AlertTriangle, User, Calendar, Flag, Edit2, Trash2
 } from 'lucide-react'
 
 const STATUS_COLS = [
@@ -33,6 +33,7 @@ export default function TasksPage() {
 
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState({ title: '', project_id: '', assigned_to: '', priority: 'normal', due_date: '', status: 'pending' })
+  const [taskToEdit, setTaskToEdit] = useState<any>(null)
 
   const addMutation = useMutation({
     mutationFn: (data: typeof form) => api.post('/tasks', data),
@@ -41,6 +42,21 @@ export default function TasksPage() {
       setShowAdd(false)
       setForm({ title: '', project_id: '', assigned_to: '', priority: 'normal', due_date: '', status: 'pending' })
     }
+  })
+
+  const editMutation = useMutation({
+    mutationFn: (data: typeof form) => api.put(`/tasks/${taskToEdit.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      setShowAdd(false)
+      setTaskToEdit(null)
+      setForm({ title: '', project_id: '', assigned_to: '', priority: 'normal', due_date: '', status: 'pending' })
+    }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/tasks/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] })
   })
 
   const { data: projectsData } = useQuery({
@@ -99,7 +115,11 @@ export default function TasksPage() {
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'list' ? 'bg-emerald-600 text-white' : 'text-[hsl(var(--muted))]'}`}
             >قائمة</button>
           </div>
-          <button className="btn-primary" onClick={() => setShowAdd(true)}><Plus size={16} /> مهمة جديدة</button>
+          <button className="btn-primary" onClick={() => {
+            setTaskToEdit(null)
+            setForm({ title: '', project_id: '', assigned_to: '', priority: 'normal', due_date: '', status: 'pending' })
+            setShowAdd(true)
+          }}><Plus size={16} /> مهمة جديدة</button>
         </div>
       </div>
 
@@ -152,16 +172,46 @@ export default function TasksPage() {
                         className={`bg-[hsl(var(--surface))] rounded-xl p-3 shadow-sm border ${overdue ? 'border-red-300' : 'border-[hsl(var(--border))]'} hover:shadow-md transition-all`}
                       >
                         {/* Title */}
-                        <div className="flex items-start gap-2 mb-2">
-                          <button
-                            onClick={() => task.status !== 'completed' && completeMutation.mutate(task.id)}
-                            className={`mt-0.5 flex-shrink-0 transition-colors ${task.status === 'completed' ? 'text-emerald-500' : 'text-[hsl(var(--muted))] hover:text-emerald-500'}`}
-                          >
-                            <CheckCircle2 size={16} />
-                          </button>
-                          <span className={`text-sm font-medium leading-snug ${task.status === 'completed' ? 'line-through text-[hsl(var(--muted))]' : 'text-[hsl(var(--foreground))]'}`}>
-                            {task.title}
-                          </span>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-start gap-2">
+                            <button
+                              onClick={() => task.status !== 'completed' && completeMutation.mutate(task.id)}
+                              className={`mt-0.5 flex-shrink-0 transition-colors ${task.status === 'completed' ? 'text-emerald-500' : 'text-[hsl(var(--muted))] hover:text-emerald-500'}`}
+                            >
+                              <CheckCircle2 size={16} />
+                            </button>
+                            <span className={`text-sm font-medium leading-snug ${task.status === 'completed' ? 'line-through text-[hsl(var(--muted))]' : 'text-[hsl(var(--foreground))]'}`}>
+                              {task.title}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity" style={{ opacity: 1 /* Force visible on mobile, or just show it always */ }}>
+                            <button 
+                              onClick={() => {
+                                setTaskToEdit(task)
+                                setForm({
+                                  title: task.title,
+                                  project_id: task.project_id || '',
+                                  assigned_to: task.assigned_to || '',
+                                  priority: task.priority || 'normal',
+                                  due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
+                                  status: task.status || 'pending'
+                                })
+                                setShowAdd(true)
+                              }}
+                              className="p-1 text-[hsl(var(--muted))] hover:text-emerald-600 hover:bg-emerald-50 rounded"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (confirm('هل أنت متأكد من حذف هذه المهمة؟')) deleteMutation.mutate(task.id)
+                              }}
+                              className="p-1 text-[hsl(var(--muted))] hover:text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Project */}
@@ -266,15 +316,42 @@ export default function TasksPage() {
                       </span>
                     </td>
                     <td>
-                      <select
-                        value={task.status}
-                        onChange={e => statusMutation.mutate({ id: task.id, status: e.target.value })}
-                        className="text-xs border border-[hsl(var(--border))] rounded-lg px-2 py-1 bg-[hsl(var(--surface))] cursor-pointer"
-                      >
-                        {STATUS_COLS.map(s => (
-                          <option key={s.key} value={s.key}>{s.label}</option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={task.status}
+                          onChange={e => statusMutation.mutate({ id: task.id, status: e.target.value })}
+                          className="text-xs border border-[hsl(var(--border))] rounded-lg px-2 py-1 bg-[hsl(var(--surface))] cursor-pointer"
+                        >
+                          {STATUS_COLS.map(s => (
+                            <option key={s.key} value={s.key}>{s.label}</option>
+                          ))}
+                        </select>
+                        <button 
+                          onClick={() => {
+                            setTaskToEdit(task)
+                            setForm({
+                              title: task.title,
+                              project_id: task.project_id || '',
+                              assigned_to: task.assigned_to || '',
+                              priority: task.priority || 'normal',
+                              due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
+                              status: task.status || 'pending'
+                            })
+                            setShowAdd(true)
+                          }}
+                          className="p-1 text-[hsl(var(--muted))] hover:text-emerald-600 rounded"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (confirm('هل أنت متأكد من حذف هذه المهمة؟')) deleteMutation.mutate(task.id)
+                          }}
+                          className="p-1 text-[hsl(var(--muted))] hover:text-red-600 rounded"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -288,7 +365,7 @@ export default function TasksPage() {
       )}
 
       {/* Add Modal */}
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="إضافة مهمة جديدة">
+      <Modal isOpen={showAdd} onClose={() => { setShowAdd(false); setTaskToEdit(null); }} title={taskToEdit ? "تعديل المهمة" : "إضافة مهمة جديدة"}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[hsl(var(--muted))] mb-1.5">عنوان المهمة</label>
@@ -328,13 +405,13 @@ export default function TasksPage() {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4">
-            <button className="btn-secondary" onClick={() => setShowAdd(false)}>إلغاء</button>
+            <button className="btn-secondary" onClick={() => { setShowAdd(false); setTaskToEdit(null); }}>إلغاء</button>
             <button 
               className="btn-primary" 
-              onClick={() => addMutation.mutate(form)}
-              disabled={!form.title || addMutation.isPending}
+              onClick={() => taskToEdit ? editMutation.mutate(form) : addMutation.mutate(form)}
+              disabled={!form.title || addMutation.isPending || editMutation.isPending}
             >
-              {addMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
+              {addMutation.isPending || editMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
             </button>
           </div>
         </div>

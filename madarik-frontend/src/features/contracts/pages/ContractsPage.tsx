@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { FileSignature, Plus, Search, Calendar } from 'lucide-react'
+import { ContractFormModal } from '../components/ContractFormModal'
 
 const STATUS_MAP: Record<string, { label: string; badge: string }> = {
   draft:     { label: 'مسودة',  badge: 'badge-gray' },
@@ -14,6 +15,7 @@ const STATUS_MAP: Record<string, { label: string; badge: string }> = {
 export default function ContractsPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['contracts', search],
@@ -35,7 +37,7 @@ export default function ContractsPage() {
             {contracts.length} عقد •  قيمة إجمالية: {totalValue.toLocaleString('ar-AE')} د.إ
           </p>
         </div>
-        <button className="btn-primary"><Plus size={16} /> عقد جديد</button>
+        <button className="btn-primary" onClick={() => setIsModalOpen(true)}><Plus size={16} /> عقد جديد</button>
       </div>
 
       <div className="relative max-w-sm">
@@ -97,6 +99,8 @@ export default function ContractsPage() {
           <div className="text-center py-12 text-[hsl(var(--muted))]">لا توجد عقود</div>
         )}
       </div>
+
+      <ContractFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )
 }

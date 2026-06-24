@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import api from '@/lib/api'
-import { TrendingDown, Plus, Search, Tag } from 'lucide-react'
+import { TrendingDown, Plus, Search, Tag, Edit, Trash2 } from 'lucide-react'
 
 const CATEGORIES = [
   'رواتب', 'إيجار', 'اتصالات', 'سفر وتنقل', 'مستلزمات مكتبية',
@@ -12,6 +12,7 @@ export default function ExpensesPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ title: '', amount: '', category: 'أخرى', date: new Date().toISOString().split('T')[0], notes: '', project_id: '' })
 
   const { data: projectsData } = useQuery({
@@ -29,10 +30,43 @@ export default function ExpensesPage() {
     mutationFn: (data: any) => api.post('/expenses', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
-      setShowAdd(false)
-      setForm({ title: '', amount: '', category: 'أخرى', date: new Date().toISOString().split('T')[0], notes: '', project_id: '' })
+      resetForm()
     },
   })
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => api.put(`/expenses/${editId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      resetForm()
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/expenses/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    },
+  })
+
+  const resetForm = () => {
+    setShowAdd(false)
+    setEditId(null)
+    setForm({ title: '', amount: '', category: 'أخرى', date: new Date().toISOString().split('T')[0], notes: '', project_id: '' })
+  }
+
+  const startEdit = (e: any) => {
+    setEditId(e.id)
+    setForm({
+      title: e.title,
+      amount: e.amount,
+      category: e.category || 'أخرى',
+      date: e.date ? new Date(e.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      notes: e.notes || '',
+      project_id: e.project_id || ''
+    })
+    setShowAdd(true)
+  }
 
   const expenses = data?.data ?? []
 
@@ -58,7 +92,13 @@ export default function ExpensesPage() {
             هذا الشهر: <strong className="text-red-500">{totalThisMonth.toLocaleString('ar-AE')} د.إ</strong>
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAdd(!showAdd)}>
+        <button className="btn-primary" onClick={() => {
+          if (showAdd) {
+            resetForm()
+          } else {
+            setShowAdd(true)
+          }
+        }}>
           <Plus size={16} /> إضافة مصروف
         </button>
       </div>
@@ -66,7 +106,7 @@ export default function ExpensesPage() {
       {/* Quick Add Form */}
       {showAdd && (
         <div className="glass-card p-5 border-s-4 border-red-400">
-          <h3 className="font-semibold mb-4 text-[hsl(var(--foreground))]">إضافة مصروف جديد</h3>
+          <h3 className="font-semibold mb-4 text-[hsl(var(--foreground))]">{editId ? 'تعديل المصروف' : 'إضافة مصروف جديد'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <input placeholder="العنوان" value={form.title}
               onChange={e => setForm({...form, title: e.target.value})} className="form-input" />
@@ -86,13 +126,17 @@ export default function ExpensesPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => addMutation.mutate({ ...form, project_id: form.project_id || null })}
-              disabled={!form.title || !form.amount || addMutation.isPending}
+              onClick={() => {
+                const payload = { ...form, project_id: form.project_id || null }
+                if (editId) updateMutation.mutate(payload)
+                else addMutation.mutate(payload)
+              }}
+              disabled={!form.title || !form.amount || addMutation.isPending || updateMutation.isPending}
               className="btn-primary"
             >
-              {addMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ المصروف'}
+              {addMutation.isPending || updateMutation.isPending ? 'جارٍ الحفظ...' : (editId ? 'تعديل المصروف' : 'حفظ المصروف')}
             </button>
-            <button onClick={() => setShowAdd(false)} className="btn-secondary">إلغاء</button>
+            <button onClick={resetForm} className="btn-secondary">إلغاء</button>
           </div>
         </div>
       )}
@@ -133,6 +177,7 @@ export default function ExpensesPage() {
                 <th className="text-start">التاريخ</th>
                 <th className="text-start">المبلغ</th>
                 <th className="text-start">ملاحظات</th>
+                <th className="text-end">إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -150,6 +195,16 @@ export default function ExpensesPage() {
                     {Number(e.amount).toLocaleString('ar-AE')} <span className="text-xs font-normal text-[hsl(var(--muted))]">د.إ</span>
                   </td>
                   <td className="text-xs text-[hsl(var(--muted))] max-w-48 truncate">{e.notes ?? '—'}</td>
+                  <td className="text-end">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => startEdit(e)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 hover:bg-blue-100 rounded" title="تعديل"><Edit size={14} /></button>
+                      <button onClick={() => {
+                        if (confirm('هل أنت متأكد من حذف هذا المصروف؟')) {
+                          deleteMutation.mutate(e.id)
+                        }
+                      }} disabled={deleteMutation.isPending} className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded" title="حذف"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

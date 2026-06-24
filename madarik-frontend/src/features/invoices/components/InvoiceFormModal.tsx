@@ -21,7 +21,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
     notes: '',
     terms: '',
     items: [
-      { id: Date.now(), description: '', quantity: 1, unit_price: 0, total: 0 }
+      { id: Date.now(), product_id: '', description: '', quantity: 1, unit_price: 0, total: 0 }
     ]
   })
 
@@ -38,11 +38,12 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
         terms: invoiceToEdit.terms || '',
         items: invoiceToEdit.items?.length > 0 ? invoiceToEdit.items.map((item: any, idx: number) => ({
           id: Date.now() + idx,
+          product_id: item.product_id || '',
           description: item.description || '',
           quantity: item.quantity || 1,
           unit_price: item.unit_price || 0,
           total: item.total || 0
-        })) : [{ id: Date.now(), description: '', quantity: 1, unit_price: 0, total: 0 }]
+        })) : [{ id: Date.now(), product_id: '', description: '', quantity: 1, unit_price: 0, total: 0 }]
       })
     } else if (isOpen) {
       // Reset form when opening for create
@@ -54,7 +55,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
         discount_amount: 0,
         notes: '',
         terms: '',
-        items: [{ id: Date.now(), description: '', quantity: 1, unit_price: 0, total: 0 }]
+        items: [{ id: Date.now(), product_id: '', description: '', quantity: 1, unit_price: 0, total: 0 }]
       })
     }
   }, [invoiceToEdit, isOpen])
@@ -67,6 +68,11 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
   const { data: projectsData } = useQuery({
     queryKey: ['projects-list'],
     queryFn: () => api.get(`/projects?per_page=100`).then(r => r.data),
+  })
+
+  const { data: productsData } = useQuery({
+    queryKey: ['products-list'],
+    queryFn: () => api.get(`/products?per_page=100`).then(r => r.data?.data || []),
   })
 
   const createMutation = useMutation({
@@ -109,7 +115,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { id: Date.now(), description: '', quantity: 1, unit_price: 0, total: 0 }]
+      items: [...prev.items, { id: Date.now(), product_id: '', description: '', quantity: 1, unit_price: 0, total: 0 }]
     }))
   }
 
@@ -136,6 +142,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
       total,
       remaining_amount: total,
       items: calculatedItems.map(item => ({
+        product_id: item.product_id,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
@@ -238,6 +245,7 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
               <table className="w-full text-start text-sm">
                 <thead className="bg-[hsl(var(--surface))]">
                   <tr>
+                    <th className="p-3 text-start font-semibold w-48">المنتج (اختياري)</th>
                     <th className="p-3 text-start font-semibold">الوصف</th>
                     <th className="p-3 text-center font-semibold w-24">الكمية</th>
                     <th className="p-3 text-center font-semibold w-32">السعر الإفرادي</th>
@@ -248,6 +256,18 @@ export default function InvoiceFormModal({ isOpen, onClose, invoiceToEdit }: Inv
                 <tbody className="divide-y divide-[hsl(var(--border))]">
                   {calculatedItems.map((item) => (
                     <tr key={item.id}>
+                      <td className="p-2">
+                        <select
+                          value={item.product_id}
+                          onChange={e => handleItemChange(item.id, 'product_id', e.target.value)}
+                          className="w-full bg-transparent border-0 focus:ring-0 p-2 outline-none"
+                        >
+                          <option value="">-- بدون منتج --</option>
+                          {productsData?.map((p: any) => (
+                            <option key={p.id} value={p.id}>{p.name_ar || p.name}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="p-2">
                         <input 
                           type="text" 

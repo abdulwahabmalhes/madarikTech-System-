@@ -1,9 +1,10 @@
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { 
   Building2, Phone, Mail, MapPin, ChevronRight, User, Target,
-  RefreshCw, FileText, Globe, Link as LinkIcon
+  RefreshCw, FileText, Globe, Link as LinkIcon, CheckCircle2
 } from 'lucide-react'
 
 const STAGE_MAP: Record<string, { label: string; badge: string }> = {
@@ -24,6 +25,21 @@ export default function LeadDetailPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['lead', id],
     queryFn: () => api.get(`/leads/${id}`).then(r => r.data),
+  })
+
+  const [isEditingSource, setIsEditingSource] = useState(false)
+  const [sourceValue, setSourceValue] = useState('')
+
+  useEffect(() => {
+    if (data?.source) setSourceValue(data.source)
+  }, [data?.source])
+
+  const updateLeadMutation = useMutation({
+    mutationFn: (data: any) => api.put(`/leads/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead', id] })
+      setIsEditingSource(false)
+    }
   })
 
   const convertMutation = useMutation({
@@ -121,7 +137,25 @@ export default function LeadDetailPage() {
             <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
               <div className="flex items-center justify-between text-xs text-[hsl(var(--muted))]">
                 <span>المصدر</span>
-                <span className="font-semibold px-2 py-0.5 bg-[hsl(var(--surface))] rounded-md border border-[hsl(var(--border))]">{lead.source}</span>
+                {isEditingSource ? (
+                  <input 
+                    type="text"
+                    value={sourceValue}
+                    onChange={(e) => setSourceValue(e.target.value)}
+                    onBlur={() => updateLeadMutation.mutate({ source: sourceValue })}
+                    onKeyDown={(e) => e.key === 'Enter' && updateLeadMutation.mutate({ source: sourceValue })}
+                    className="font-semibold px-2 py-0.5 bg-[hsl(var(--background))] rounded-md border border-emerald-500 outline-none w-32 text-center text-[hsl(var(--foreground))]"
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    className="font-semibold px-2 py-0.5 bg-[hsl(var(--surface))] rounded-md border border-[hsl(var(--border))] cursor-pointer hover:border-emerald-500 transition-colors"
+                    onClick={() => setIsEditingSource(true)}
+                    title="اضغط للتعديل"
+                  >
+                    {lead.source || 'أضف مصدراً'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
